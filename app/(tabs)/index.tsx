@@ -5,7 +5,9 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { isWithinInterval, startOfTomorrow, closestIndexTo, format, isToday } from 'date-fns';
-// import { es } from 'date-fns/locale/es';
+import { useEffect, useState } from 'react';
+import { es } from 'date-fns/locale/es';
+import { generateGoogleCalendarLink } from '@/src/utils';
 // https://date-fns.org/v3.6.0/docs/isToday
 // TODO: meter lo del plano/gps tb
 // array base "dia de la semana" => 0: domingo, 1: lunes... 6 sábado
@@ -65,8 +67,9 @@ const tramoToDate = (tramo, date: Date) => {
   }
 }
 // Puede devolver bien el tramo en el que estamos, o el siguiente tramo disponible
+// now: fecha
+// tramosPorDia: Array[7] con los tramos por día, siendo 0:Domingo, 1:Lunes... 6:Sábado
 const obtenerTramoRelevante = (now, tramosPorDia) => {
-  // VERDE
   const zonaHoy = tramosPorDia[now.getDay()].map(tramo => tramoToDate(tramo, now));
   const tramoAhora = zonaHoy.find(tramo => isWithinInterval(now, tramo));
   if (tramoAhora) {
@@ -96,18 +99,30 @@ const availableParkingZones = (now: Date) => {
   };
 
   return Object.entries(zonas).reduce((acc, value) => {
-    acc[value[0]] = obtenerTramoRelevante(now, value[1]);
+    //acc[value[0]] = obtenerTramoRelevante(now, value[1]);
+    const tramoRelevante = obtenerTramoRelevante(now, value[1]);
+    const tramoEstaActivo = isWithinInterval(now, tramoRelevante);
+    acc[value[0]] = {
+      activa: tramoEstaActivo,
+      fecha: tramoEstaActivo ? tramoRelevante.end : tramoRelevante.start
+    }
     return acc;
   }, {});
 }
 
+// TODO: Son las... XX:XX (y llamar a availableParkingZones(now) cada segundo)
 export default function HomeScreen() {
-  const now = new Date();
-  const parkingZones = availableParkingZones(now);
-  const zonaVerdeHabilitada = isWithinInterval(now, parkingZones.verde);
-  const zonaVerdeFechaReferencia = zonaVerdeHabilitada ? parkingZones.verde.end : parkingZones.verde.start;
-  const zonaRojaHabilitada = isWithinInterval(now, parkingZones.roja);
-  const zonaRojaFechaReferencia = zonaRojaHabilitada ? parkingZones.roja.end : parkingZones.roja.start;
+  const [now, setNow] = useState(new Date());
+  const [zonas, setZonas] = useState(availableParkingZones(now));
+
+  useEffect(() => {
+    setZonas(availableParkingZones(now));
+  }, [now]);
+
+  useEffect(() => {
+    window.setInterval(() => setNow(new Date()), 5000);
+  }, []);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -121,17 +136,23 @@ export default function HomeScreen() {
         <ThemedText type="title">Estado de las ZONAS de ESTACIONAMIENTO RESTRINGIDO TEMPORAL (ZERT) en Barañáin</ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Zona Verde {zonaVerdeHabilitada ? "✔️" : "🚫"}</ThemedText>
-        <ThemedText>
-          {zonaVerdeHabilitada ? "Acaba a las ": "Comienza a las "}{format(zonaVerdeFechaReferencia, "HH:mm")}{isToday(zonaVerdeFechaReferencia) ? "." : " de mañana." }
-        </ThemedText>
+        <ThemedText type="subtitle">Hora actual ⏰ {format(now, "H:mm 'del' d 'de' MMMM", { locale: es })}</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Zona Roja {zonaRojaHabilitada ? "✔️" : "🚫"}</ThemedText>
-        <ThemedText>
-          {zonaRojaHabilitada ? "Acaba a las ": "Comienza a las "}{format(zonaRojaFechaReferencia, "HH:mm")}{isToday(zonaRojaFechaReferencia) ? "." : " de mañana." }
-        </ThemedText>
-      </ThemedView>
+      {
+        Object.entries(zonas).map(([zona, estado]) =>
+          <ThemedView key={zona} style={styles.stepContainer}>
+            <ThemedText type="subtitle">Zona {zona.toUpperCase()} {estado.activa ? "✔️" : "🚫"}</ThemedText>
+            <ThemedText>
+              {estado.activa ? "Acaba a las ": "Comienza a las "}{format(estado.fecha, "HH:mm")}{isToday(estado.fecha) ? " de hoy." : " de mañana." }
+            </ThemedText>
+            {estado.activa && 
+            <ThemedText>
+               <a href={generateGoogleCalendarLink("Mover coche de la zona " + zona, estado.fecha, estado.fecha, "", "", "Europe/Madrid")} target="_blank">Crear recordatorio en Google Calendar</a>
+            </ThemedText>
+            }
+          </ThemedView>
+        )
+      }
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Disclaimer</ThemedText>
         <ThemedText>
