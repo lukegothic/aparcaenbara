@@ -11,6 +11,16 @@ import { generateGoogleCalendarLink } from '@/src/utils';
 // https://date-fns.org/v3.6.0/docs/isToday
 // TODO: meter lo del plano/gps tb
 // array base "dia de la semana" => 0: domingo, 1: lunes... 6 sábado
+interface Time {
+  hour: number,
+  minute: number,
+  second: number
+}
+interface Tramo {
+  start: Time,
+  end: Time
+}
+
 const zonaVerdePorDiaSemana = [
   [
     {
@@ -53,10 +63,13 @@ const zonaVerdePorDiaSemana = [
 const zonaRojaPorDiaSemana = new Array(7).fill([{
     start: { hour: 20, minute: 0, second: 0 },
     end: { hour: 32, minute: 0, second: 0 }
+  }, {
+    start: { hour: 0, minute: 0, second: 0 },
+    end: { hour: 8, minute: 0, second: 0 }
   }
 ]);
 
-const tramoToDate = (tramo, date: Date) => {
+const tramoToDate = (tramo: Tramo, date: Date) => {
   const start = new Date(date);
   start.setHours(tramo.start.hour, tramo.start.minute, tramo.start.second);
   const end = new Date(date);
@@ -69,7 +82,7 @@ const tramoToDate = (tramo, date: Date) => {
 // Puede devolver bien el tramo en el que estamos, o el siguiente tramo disponible
 // now: fecha
 // tramosPorDia: Array[7] con los tramos por día, siendo 0:Domingo, 1:Lunes... 6:Sábado
-const obtenerTramoRelevante = (now, tramosPorDia) => {
+const obtenerTramoRelevante = (now: Date, tramosPorDia: Tramo[][]) => {
   const zonaHoy = tramosPorDia[now.getDay()].map(tramo => tramoToDate(tramo, now));
   const tramoAhora = zonaHoy.find(tramo => isWithinInterval(now, tramo));
   if (tramoAhora) {
@@ -82,6 +95,15 @@ const obtenerTramoRelevante = (now, tramosPorDia) => {
     const tramoNextIndex = closestIndexTo(now, tramosSiguientes.map(tramo => tramo.start))!;
     return tramosSiguientes[tramoNextIndex];
   }
+}
+
+interface DatosZona {
+  activa: boolean;
+  fecha: Date;
+}
+
+interface Zonas {
+  [key: string]: DatosZona;
 }
 
 const availableParkingZones = (now: Date) => {
@@ -98,11 +120,10 @@ const availableParkingZones = (now: Date) => {
     "roja": zonaRojaPorDiaSemana
   };
 
-  return Object.entries(zonas).reduce((acc, value) => {
-    //acc[value[0]] = obtenerTramoRelevante(now, value[1]);
-    const tramoRelevante = obtenerTramoRelevante(now, value[1]);
+  return Object.entries(zonas).reduce((acc: Zonas, [zona, tramosDiarios]) => {
+    const tramoRelevante = obtenerTramoRelevante(now, tramosDiarios);
     const tramoEstaActivo = isWithinInterval(now, tramoRelevante);
-    acc[value[0]] = {
+    acc[zona] = {
       activa: tramoEstaActivo,
       fecha: tramoEstaActivo ? tramoRelevante.end : tramoRelevante.start
     }
@@ -139,15 +160,15 @@ export default function HomeScreen() {
         <ThemedText type="subtitle">Hora actual ⏰ {format(now, "H:mm 'del' d 'de' MMMM", { locale: es })}</ThemedText>
       </ThemedView>
       {
-        Object.entries(zonas).map(([zona, estado]) =>
+        Object.entries(zonas).map(([zona, datos]) =>
           <ThemedView key={zona} style={styles.stepContainer}>
-            <ThemedText type="subtitle">Zona {zona.toUpperCase()} {estado.activa ? "✔️" : "🚫"}</ThemedText>
+            <ThemedText type="subtitle">Zona {zona.toUpperCase()} {datos.activa ? "✔️" : "🚫"}</ThemedText>
             <ThemedText>
-              {estado.activa ? "Acaba a las ": "Comienza a las "}{format(estado.fecha, "HH:mm")}{isToday(estado.fecha) ? " de hoy." : " de mañana." }
+              {datos.activa ? "Acaba a las ": "Comienza a las "}{format(datos.fecha, "HH:mm")}{isToday(datos.fecha) ? " de hoy." : " de mañana." }
             </ThemedText>
-            {estado.activa && 
+            {datos.activa && 
             <ThemedText>
-               <a href={generateGoogleCalendarLink("Mover coche de la zona " + zona, estado.fecha, estado.fecha, "", "", "Europe/Madrid")} target="_blank">Crear recordatorio en Google Calendar</a>
+               <a href={generateGoogleCalendarLink("Mover coche de la zona " + zona.toUpperCase(), datos.fecha, datos.fecha, "", "", "Europe/Madrid")} target="_blank">Añadir recordatorio en calendario</a>
             </ThemedText>
             }
           </ThemedView>
