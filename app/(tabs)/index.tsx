@@ -46,14 +46,14 @@ const zonaVerdePorDiaSemana = [
       end: { hour: 45, minute: 0, second: 0 }
     }
   ]
-]
-// TODO: zona roja
-const zonaRojaTramosDiarios = [
-  {
+];
+
+const zonaRojaPorDiaSemana = new Array(7).fill([{
     start: { hour: 20, minute: 0, second: 0 },
     end: { hour: 32, minute: 0, second: 0 }
   }
-]
+]);
+
 const tramoToDate = (tramo, date: Date) => {
   const start = new Date(date);
   start.setHours(tramo.start.hour, tramo.start.minute, tramo.start.second);
@@ -64,46 +64,41 @@ const tramoToDate = (tramo, date: Date) => {
     end
   }
 }
-const availableParkingZones = (now: Date) => {
-  const tomorrow = startOfTomorrow();
-  console.log(now)
-  console.log(tomorrow);
+// Puede devolver bien el tramo en el que estamos, o el siguiente tramo disponible
+const obtenerTramoRelevante = (now, tramosPorDia) => {
   // VERDE
-  const zonaVerdeHoy = zonaVerdePorDiaSemana[now.getDay()].map(tramo => tramoToDate(tramo, now));
-  console.log(zonaVerdeHoy);
-  const verdeTramoOk = zonaVerdeHoy.find(tramo => isWithinInterval(now, tramo));
-  let verde = null;
-  if (verdeTramoOk) {
-    verde = verdeTramoOk;
+  const zonaHoy = tramosPorDia[now.getDay()].map(tramo => tramoToDate(tramo, now));
+  const tramoAhora = zonaHoy.find(tramo => isWithinInterval(now, tramo));
+  if (tramoAhora) {
+    return tramoAhora;
   } else {
-    const verdeTramosSiguientesHoy = zonaVerdeHoy.filter(tramo => tramo.start > now);
-    const verdeTramosSiguientesManana = zonaVerdePorDiaSemana[tomorrow.getDay()].map(tramo => tramoToDate(tramo, tomorrow));
-    const verdeTramosSiguientes = (new Array()).concat(verdeTramosSiguientesHoy, verdeTramosSiguientesManana)
-    const verdeTramoNextIndex = closestIndexTo(now, verdeTramosSiguientes.map(tramo => tramo.start))!;
-    verde = verdeTramosSiguientes[verdeTramoNextIndex];
+    const tomorrow = startOfTomorrow();
+    const tramosSiguientesHoy = zonaHoy.filter(tramo => tramo.start > now);
+    const tramosSiguientesManana = tramosPorDia[tomorrow.getDay()].map(tramo => tramoToDate(tramo, tomorrow));
+    const tramosSiguientes = (new Array()).concat(tramosSiguientesHoy, tramosSiguientesManana)
+    const tramoNextIndex = closestIndexTo(now, tramosSiguientes.map(tramo => tramo.start))!;
+    return tramosSiguientes[tramoNextIndex];
   }
-  // TODO: starts_at
+}
 
-  // ROJA
-  const zonaRojaHoy = zonaRojaTramosDiarios.map(tramo => tramoToDate(tramo, now));
-  console.log(zonaRojaHoy);
-  const rojaTramoOk = zonaRojaHoy.find(tramo => isWithinInterval(now, tramo));
-  let roja = null;
-  if (rojaTramoOk) {
-    roja = rojaTramoOk;
-  } else {
-    const rojaTramosSiguientesHoy = zonaRojaHoy.filter(tramo => tramo.start > now);
-    const rojaTramosSiguientesManana = zonaRojaTramosDiarios.map(tramo => tramoToDate(tramo, tomorrow));
-    const rojaTramosSiguientes = (new Array()).concat(rojaTramosSiguientesHoy, rojaTramosSiguientesManana)
-    const rojaTramoNextIndex = closestIndexTo(now, rojaTramosSiguientes.map(tramo => tramo.start))!;
-    roja = rojaTramosSiguientes[rojaTramoNextIndex];
-  }
-  // TODO: verde y roja son iguales pero estoy muy espeso para refactorizar hoy, refactorizar mañana
-  // DEVOLVER
+const availableParkingZones = (now: Date) => {
+  // Para cada zona, se devuelve el tramo relevante, el código es equivalente al siguiente código no dinámico pero más explicito
+  /*
   return {
-    verde,
-    roja
+    verde: obtenerTramoRelevante(now, zonaVerdePorDiaSemana),
+    roja: obtenerTramoRelevante(now, zonaRojaPorDiaSemana),
   }
+  */
+
+  const zonas = {
+    "verde": zonaVerdePorDiaSemana,
+    "roja": zonaRojaPorDiaSemana
+  };
+
+  return Object.entries(zonas).reduce((acc, value) => {
+    acc[value[0]] = obtenerTramoRelevante(now, value[1]);
+    return acc;
+  }, {});
 }
 
 export default function HomeScreen() {
