@@ -131,7 +131,6 @@ const availableParkingZones = (now: Date) => {
   }, {});
 }
 
-// TODO: Son las... XX:XX (y llamar a availableParkingZones(now) cada segundo)
 export default function HomeScreen() {
   const [now, setNow] = useState(new Date());
   const [zonas, setZonas] = useState(availableParkingZones(now));
@@ -144,6 +143,7 @@ export default function HomeScreen() {
     window.setInterval(() => setNow(new Date()), 5000);
   }, []);
 
+  // TODO: poner bonito
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
