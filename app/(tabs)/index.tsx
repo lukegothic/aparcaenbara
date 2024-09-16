@@ -4,7 +4,7 @@ import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { isWithinInterval, startOfTomorrow, closestIndexTo, format, isToday } from 'date-fns';
+import { isWithinInterval, startOfTomorrow, closestIndexTo, format, isToday, differenceInMinutes } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { es } from 'date-fns/locale/es';
 import { generateGoogleCalendarLink } from '@/src/utils';
@@ -144,27 +144,39 @@ export default function HomeScreen() {
   }, []);
 
   // TODO: poner bonito
+  const sePuedeAparcar = Object.entries(zonas).some(([zona, datos]) => datos.activa);
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/partial-react-logo.png')}
+          source={require('@/assets/images/aparcaenbara.jpeg')}
           style={styles.reactLogo}
         />
-      }>
+      }> 
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Estado de las ZONAS de ESTACIONAMIENTO RESTRINGIDO TEMPORAL (ZERT) en Barañáin</ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Hora actual ⏰ {format(now, "H:mm 'del' d 'de' MMMM", { locale: es })}</ThemedText>
       </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">¿Puedes aparcar? {sePuedeAparcar ? "Si, aunque no seas residente" : "No"}</ThemedText>
+      </ThemedView>
+      { sePuedeAparcar && <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">¿Tienes que pagar? No</ThemedText>
+      </ThemedView>
+      }     
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">¿Dónde puedes aparcar?</ThemedText>
+      </ThemedView>
       {
         Object.entries(zonas).map(([zona, datos]) =>
           <ThemedView key={zona} style={styles.stepContainer}>
             <ThemedText type="subtitle">Zona {zona.toUpperCase()} {datos.activa ? "✔️" : "🚫"}</ThemedText>
             <ThemedText>
-              {datos.activa ? "Acaba a las ": "Comienza a las "}{format(datos.fecha, "HH:mm")}{isToday(datos.fecha) ? " de hoy." : " de mañana." }
+              {datos.activa && `Hasta las ${format(datos.fecha, "HH:mm")} de ${isToday(datos.fecha) ? "hoy" : "mañana"}.`}
+              {(!datos.activa && differenceInMinutes(datos.fecha, now) <= 60) && `Activa en ${differenceInMinutes(datos.fecha, now)} minutos.`} 
             </ThemedText>
             {datos.activa && 
             <ThemedText>
