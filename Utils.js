@@ -1,19 +1,19 @@
 function generateGoogleCalendarLink(eventName, startDateTime, endDateTime = startDateTime, description = "", location = "", timezone = "") {
-    const baseURL = "https://www.google.com/calendar/render?action=TEMPLATE";
-    
-    const text = encodeURIComponent(eventName);
-    const dates = formatDateTime(startDateTime) + (endDateTime ? "/" + formatDateTime(endDateTime) : "");
-    const details = encodeURIComponent(description);
-    const loc = encodeURIComponent(location);
-    const ctz = encodeURIComponent(timezone);
-    
-    const fullURL = `${baseURL}&text=${text}&dates=${dates}&details=${details}&location=${loc}&ctz=${ctz}`;
-    
-    return fullURL;
+  const baseURL = "https://www.google.com/calendar/render?action=TEMPLATE";
+  
+  const text = encodeURIComponent(eventName);
+  const dates = formatDateTime(startDateTime) + (endDateTime ? "/" + formatDateTime(endDateTime) : "");
+  const details = encodeURIComponent(description);
+  const loc = encodeURIComponent(location);
+  const ctz = encodeURIComponent(timezone);
+  
+  const fullURL = `${baseURL}&text=${text}&dates=${dates}&details=${details}&location=${loc}&ctz=${ctz}`;
+  
+  return fullURL;
 }
 
 function formatDateTime(dateTime) {
-    return dateTime.toISOString().replace(/-|:|\.\d{3}/g, "");
+  return dateTime.toISOString().replace(/-|:|\.\d{3}/g, "");
 }
 /*
 // Ejemplo de uso

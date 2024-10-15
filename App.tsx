@@ -1,13 +1,17 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { isWithinInterval, startOfTomorrow, closestIndexTo, format, isToday, differenceInMinutes } from 'date-fns';
+import React from 'react';
 import { useEffect, useState } from 'react';
+import styles from './styles';
+import { View, Text, ScrollView } from 'react-native';
+import { isWithinInterval, startOfTomorrow, closestIndexTo, format, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale/es';
-import { generateGoogleCalendarLink } from '@/src/utils';
+/*import { useFonts } from 'expo-font';
+import { ChivoMono_700Bold } from '@expo-google-fonts/chivo-mono';
+*/
+import * as SplashScreen from 'expo-splash-screen';
+import ZonaCard from './components/ZonaCard';
+import QuestionAnswer from './components/QuestionAnswer';
+
+
 // https://date-fns.org/v3.6.0/docs/isToday
 // TODO: meter lo del plano/gps tb
 // array base "dia de la semana" => 0: domingo, 1: lunes... 6 sábado
@@ -106,7 +110,7 @@ interface Zonas {
   [key: string]: DatosZona;
 }
 
-const availableParkingZones = (now: Date) => {
+const availableParkingZones = (now: Date): Zonas => {
   // Para cada zona, se devuelve el tramo relevante, el código es equivalente al siguiente código no dinámico pero más explicito
   /*
   return {
@@ -131,7 +135,10 @@ const availableParkingZones = (now: Date) => {
   }, {});
 }
 
-export default function HomeScreen() {
+
+
+const App = () => {
+  // const [fontsLoaded] = useFonts({ ChivoMono_700Bold });
   const [now, setNow] = useState(new Date());
   const [zonas, setZonas] = useState(availableParkingZones(now));
 
@@ -139,78 +146,54 @@ export default function HomeScreen() {
     setZonas(availableParkingZones(now));
   }, [now]);
 
+  /*
+  useEffect(() => {
+    fontsLoaded && SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+  */
   useEffect(() => {
     window.setInterval(() => setNow(new Date()), 5000);
   }, []);
 
-  // TODO: poner bonito
   const sePuedeAparcar = Object.entries(zonas).some(([zona, datos]) => datos.activa);
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/aparcaenbara.jpeg')}
-          style={styles.reactLogo}
-        />
-      }> 
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Estado de las ZONAS de ESTACIONAMIENTO RESTRINGIDO TEMPORAL (ZERT) en Barañáin</ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Hora actual ⏰ {format(now, "H:mm 'del' d 'de' MMMM", { locale: es })}</ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">¿Puedes aparcar? {sePuedeAparcar ? "Si, aunque no seas residente" : "No"}</ThemedText>
-      </ThemedView>
-      { sePuedeAparcar && <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">¿Tienes que pagar? No</ThemedText>
-      </ThemedView>
-      }     
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">¿Dónde puedes aparcar?</ThemedText>
-      </ThemedView>
-      {
-        Object.entries(zonas).map(([zona, datos]) =>
-          <ThemedView key={zona} style={styles.stepContainer}>
-            <ThemedText type="subtitle">Zona {zona.toUpperCase()} {datos.activa ? "✔️" : "🚫"}</ThemedText>
-            <ThemedText>
-              {datos.activa && `Hasta las ${format(datos.fecha, "HH:mm")} de ${isToday(datos.fecha) ? "hoy" : "mañana"}.`}
-              {(!datos.activa && differenceInMinutes(datos.fecha, now) <= 60) && `Activa en ${differenceInMinutes(datos.fecha, now)} minutos.`} 
-            </ThemedText>
-            {datos.activa && 
-            <ThemedText>
-               <a href={generateGoogleCalendarLink("Mover coche de la zona " + zona.toUpperCase(), datos.fecha, datos.fecha, "", "", "Europe/Madrid")} target="_blank">Añadir recordatorio en calendario</a>
-            </ThemedText>
-            }
-          </ThemedView>
-        )
-      }
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Disclaimer</ThemedText>
-        <ThemedText>
-          Las indicaciones de esta página web han sido generadas automáticamente siguiendo la <a href="https://www.baranain.es/general/zert/">guía de horarios ZERT oficial del Ayuntamiento de Barañain.</a> Los horarios de la ZERT cambian en los periodos festivos tales como la semana de festejos de Barañáin y el periodo de Navidad. Consulte la web proporcionada si la fecha actual se encuentra en un periodo festivo.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
-}
+  const sePuedeAparcarProximamente = Object.entries(zonas).some(([zona, datos]) => !datos.activa && differenceInMinutes(datos.fecha, now) <= 60);
+  console.log(sePuedeAparcar, sePuedeAparcarProximamente);
+  // Evitar que la pantalla de presentación se oculte automáticamente
+  // SplashScreen.preventAutoHideAsync();
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+  return (
+    <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Estacionamiento en Barañáin</Text>
+        </View>
+        {/* Current Time */}
+        <View style={styles.currentTime}>
+          <Text>Hora actual: <Text style={{ fontWeight: 'bold' }}>{format(now, "H:mm 'del' d 'de' MMMM", { locale: es })}</Text></Text>
+        </View>
+        {/* Zones Information */}
+        { <View style={styles.zonesInfo}>
+            {Object.entries(zonas).map(([zona, datos]) => <ZonaCard now={now} zona={zona} datos={datos} key={zona} /> )}
+          </View>
+        }
+        
+        <Text style={styles.questionsTitle}><Text style={styles.questionsIcon}>❓</Text> Preguntas frecuentes</Text>
+        <QuestionAnswer question={"¿Puedes aparcar?"} answer={"Sí, aunque no seas residente, en el horario permitido."} />
+        <QuestionAnswer question={"¿Tienes que pagar?"} answer={"No, el estacionamiento es gratuito."} />
+        
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={{ fontSize: 10, textAlign: 'justify' }}>
+            <Text style={{ fontWeight: 'bold' }}>Disclaimer:</Text> Las indicaciones de esta página web han sido
+            generadas automáticamente siguiendo la <a href="https://www.baranain.es/general/zert/" target="_blank">guía de horarios ZERT oficial del Ayuntamiento de Barañáin</a>. Los horarios
+            de la ZERT cambian en los periodos festivos. Consulte la web del ayuntamiento si la fecha actual se encuentra
+            en un periodo festivo.
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
+export default App;
